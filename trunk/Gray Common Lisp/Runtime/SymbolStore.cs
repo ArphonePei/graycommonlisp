@@ -16,5 +16,13 @@ namespace Gray_Common_Lisp.Runtime
 
 			return symbol;
 		}
+
+		public Symbol Intern(Symbol symbol)
+		{
+			if (!symbols.ContainsKey(symbol.Name))
+				symbols.Add(symbol.Name, symbol);
+
+			return symbol;
+		}
 	}
 }

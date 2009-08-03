@@ -30,8 +30,8 @@ namespace Gray_Common_Lisp.Frontend
 
 		public static void Init()
 		{
-			symbolStore.Intern("nil");
-			symbolStore.Intern("t");
+			symbolStore.Intern(Symbol.Nil);
+			symbolStore.Intern(Symbol.T);
 
 			readtable.Add('(', (s, c) => ReadDelimitedList(s, ')', true));
 		}
@@ -70,8 +70,7 @@ namespace Gray_Common_Lisp.Frontend
 		public static object ReadDelimitedList(TextReader stream, char delimiter, bool lispList = false)
 		{
 			if (PeekChar(stream, PeekType.SkipWhiteSpace) == delimiter)
-				// NOTE: Could be a property in the SymbolStore. The same for t.
-				return symbolStore.Intern("nil");
+				return Symbol.Nil;
 
 			if (lispList && PeekChar(stream, PeekType.SkipWhiteSpace) == '.')
 			{
