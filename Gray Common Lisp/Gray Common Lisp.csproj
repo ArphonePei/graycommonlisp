@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Backend\Interpreter.cs" />
     <Compile Include="Exceptions\EndOfFileException.cs" />
     <Compile Include="Frontend\Reader.cs" />
     <Compile Include="Program.cs" />
@@ -56,8 +57,9 @@
     <Compile Include="Runtime\Ast\Node.cs" />
     <Compile Include="Runtime\ConsCell.cs" />
     <Compile Include="Runtime\Symbol.cs" />
-    <Compile Include="Runtime\SymbolStore.cs" />
+    <Compile Include="Runtime\Package.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
