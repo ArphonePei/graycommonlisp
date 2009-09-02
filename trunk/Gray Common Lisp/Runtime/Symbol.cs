@@ -2,10 +2,8 @@
 {
 	class Symbol
 	{
-		public static readonly Symbol Nil = new Symbol("nil");
-		public static readonly Symbol T = new Symbol("t");
-
 		public readonly string Name;
+		public Package Package { get; set; }
 
 		public Symbol(string name)
 		{

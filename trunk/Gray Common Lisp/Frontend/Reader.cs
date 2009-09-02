@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Gray_Common_Lisp.Runtime;
+using Gray_Common_Lisp.Backend;
 
-// TODO: The handling of the . in lists is kind of odd.
-// 		 lisp: (1 2 .3) => (1 2 0.3)
-//       gcl : (1 2 .3) => (1 2 . 3)
-// 		 It's the fault of the simplistic way the reader
-// 		 thinks.
+using Readtable = System.Collections.Generic.Dictionary<char, Gray_Common_Lisp.Frontend.Reader.ReaderMacroDelegate>;
+
 namespace Gray_Common_Lisp.Frontend
 {
 	enum PeekType
@@ -18,25 +16,33 @@ namespace Gray_Common_Lisp.Frontend
 		Normal
 	}
 
-	static class Reader
+	class Reader
 	{
-		private delegate object ReaderMacroDelegate(TextReader stream, char @char);
+		public delegate object ReaderMacroDelegate(TextReader stream, char @char);
 
-		private static readonly StringBuilder buffer = new StringBuilder();
-
-		private static readonly Dictionary<char, ReaderMacroDelegate> readtable = new Dictionary<char, ReaderMacroDelegate>();
-
-		internal static readonly SymbolStore symbolStore = new SymbolStore();
-
-		public static void Init()
+		private static Dictionary<string, Symbol> SpecialSymbols = new Dictionary<string, Symbol>()
 		{
-			symbolStore.Intern(Symbol.Nil);
-			symbolStore.Intern(Symbol.T);
+			{ "nil", null },
+			{ "t", new Symbol("t") },
+			{ ".", new Symbol(".") },
+		};
 
+		public static Symbol Nil = null;
+		public static Symbol T = new Symbol("T");
+		public static Symbol Dot = new Symbol(".");
+
+		private readonly StringBuilder buffer = new StringBuilder();
+		private readonly Interpreter interpreter;
+
+		private readonly Readtable readtable = new Readtable();
+
+		public Reader(Interpreter interpreter)
+		{
+			this.interpreter = interpreter;
 			readtable.Add('(', (s, c) => ReadDelimitedList(s, ')', true));
 		}
 
-		public static object Read(TextReader stream)
+		public object Read(TextReader stream)
 		{
 			ReaderMacroDelegate macro;
 			if (readtable.TryGetValue(PeekChar(stream, PeekType.SkipWhiteSpace), out macro))
@@ -52,12 +58,13 @@ namespace Gray_Common_Lisp.Frontend
 			if (Double.TryParse(token, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out doubleValue))
 				return doubleValue;
 
-			return symbolStore.Intern(token);
+			// TODO: Check for dot context error
+			return interpreter.package.Intern(token);
 		}
 
 		// NOTE: This is an implementation specific function. The library wrapper will implement
 		//       the interface required by the standard.
-		public static char PeekChar(TextReader stream, PeekType peekType = PeekType.Normal, char targetChar = '\x00')
+		public char PeekChar(TextReader stream, PeekType peekType = PeekType.Normal, char targetChar = '\x00')
 		{
 			if (peekType == PeekType.SkipWhiteSpace)
 				SkipWhile(stream, Char.IsWhiteSpace);
@@ -67,12 +74,13 @@ namespace Gray_Common_Lisp.Frontend
 			return (char) stream.Peek();
 		}
 
-		public static object ReadDelimitedList(TextReader stream, char delimiter, bool lispList = false)
+		private object ReadDelimitedList(TextReader stream, char delimiter, bool lispList = false)
 		{
 			if (PeekChar(stream, PeekType.SkipWhiteSpace) == delimiter)
-				return Symbol.Nil;
+				return Nil;
+			var car = Read(stream);
 
-			if (lispList && PeekChar(stream, PeekType.SkipWhiteSpace) == '.')
+			if (lispList && car.Equals(Dot))
 			{
 				stream.Read();
 				var cdr = Read(stream);
@@ -83,21 +91,21 @@ namespace Gray_Common_Lisp.Frontend
 				return cdr;
 			}
 
-			return new ConsCell(Read(stream), ReadDelimitedList(stream, delimiter, lispList));
+			return new ConsCell(car, ReadDelimitedList(stream, delimiter, lispList));
 		}
 
-		private static bool IsTokenConstituent(char c)
+		private bool IsTokenConstituent(char c)
 		{
 			return !Char.IsWhiteSpace(c) && c != ')';
 		}
 
-		private static void SkipWhile(TextReader stream, Predicate<char> predicate)
+		private void SkipWhile(TextReader stream, Predicate<char> predicate)
 		{
 			while (stream.Peek() != -1 && predicate((char) stream.Peek()))
 				stream.Read();
 		}
 
-		private static string ReadWhile(TextReader stream, Predicate<char> predicate)
+		private string ReadWhile(TextReader stream, Predicate<char> predicate)
 		{
 			buffer.Length = 0;
 
@@ -105,6 +113,11 @@ namespace Gray_Common_Lisp.Frontend
 				buffer.Append((char) stream.Read());
 
 			return buffer.ToString();
+		}
+
+		public static bool TryGetSpecialSymbol(string name, out Symbol symbol)
+		{
+			return SpecialSymbols.TryGetValue(name, out symbol);
 		}
 	}
 }
