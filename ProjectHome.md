@@ -1,0 +1,1 @@
+A Common Lisp implementation for the .NET platform that will produce efficient code and will strive to seamlessly integrate with the BCL.
